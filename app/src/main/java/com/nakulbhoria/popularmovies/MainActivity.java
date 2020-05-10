@@ -1,7 +1,5 @@
 package com.nakulbhoria.popularmovies;
 
-import androidx.appcompat.app.AppCompatActivity;
-
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -10,6 +8,8 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.GridView;
 import android.widget.Spinner;
+
+import androidx.appcompat.app.AppCompatActivity;
 
 import java.util.ArrayList;
 
@@ -83,8 +83,9 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected Void doInBackground(Void... voids) {
 
-            String popularURL = "https://api.themoviedb.org/3/discover/movie?sort_by=popularity.desc&api_key=e8b360e6cb85c4a1add9aac77aaf7ef8";
-            String topRated = "https://api.themoviedb.org/3/discover/movie?sort_by=vote_average.desc&api_key=e8b360e6cb85c4a1add9aac77aaf7ef8";
+            String apiKey = "api_key";
+            String popularURL = "https://api.themoviedb.org/3/movie/popular?&api_key=" + apiKey;
+            String topRated = "https://api.themoviedb.org/3/movie/top_rated?&api_key=" + apiKey;
 
 
             if(isSortByRating){
