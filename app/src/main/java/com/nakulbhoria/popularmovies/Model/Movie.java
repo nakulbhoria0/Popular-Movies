@@ -1,7 +1,24 @@
-package com.nakulbhoria.popularmovies;
+package com.nakulbhoria.popularmovies.Model;
 
-public class Movie {
+import java.io.Serializable;
+
+public class Movie implements Serializable {
     String mTitle, mOverview, mVoteAverage, mPoster, mReleaseDate ;
+    int mId;
+
+    public Movie(String title, String overview, String voteAverage, String poster, String releaseDate, int id) {
+
+        mTitle = title;
+        mOverview = overview;
+        mVoteAverage = voteAverage;
+        mPoster = poster;
+        mReleaseDate = releaseDate;
+        mId = id;
+    }
+
+    public int getmId() {
+        return mId;
+    }
 
     public String getmTitle() {
         return mTitle;
@@ -43,12 +60,7 @@ public class Movie {
         this.mReleaseDate = mReleaseDate;
     }
 
-    public Movie(String title, String overview, String voteAverage, String poster, String releaseDate){
-
-        mTitle = title;
-        mOverview = overview;
-        mVoteAverage = voteAverage;
-        mPoster = poster;
-        mReleaseDate = releaseDate;
+    public void setmId(int id) {
+        mId = id;
     }
 }
