@@ -1,4 +1,4 @@
-package com.nakulbhoria.popularmovies;
+package com.nakulbhoria.popularmovies.Adapters;
 
 import android.content.Context;
 import android.content.Intent;
@@ -11,7 +11,9 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.nakulbhoria.popularmovies.DetailActivity;
 import com.nakulbhoria.popularmovies.Model.Movie;
+import com.nakulbhoria.popularmovies.R;
 import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;

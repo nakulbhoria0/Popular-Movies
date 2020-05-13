@@ -1,8 +1,6 @@
 package com.nakulbhoria.popularmovies;
 
-import android.content.ContentValues;
 import android.content.Intent;
-import android.database.Cursor;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -15,13 +13,14 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.nakulbhoria.popularmovies.Model.FavoriteMovie;
+import com.nakulbhoria.popularmovies.Model.FavoriteViewModel;
 import com.nakulbhoria.popularmovies.Model.Movie;
 import com.nakulbhoria.popularmovies.Model.Trailer;
-import com.nakulbhoria.popularmovies.data.DatabaseHelper;
-import com.nakulbhoria.popularmovies.data.MovieProvider;
 import com.nakulbhoria.popularmovies.data.NetworkUtils;
 import com.squareup.picasso.Picasso;
 
@@ -37,32 +36,52 @@ public class DetailActivity extends AppCompatActivity {
     RecyclerView reviewRecyclerView;
     VideoAdapter videoAdapter;
     ReviewAdapter reviewAdapter;
+    FavoriteViewModel viewModel;
     boolean isFavorite;
+    ImageView imageView;
+    TextView title;
+    TextView description;
+    TextView releaseDate;
+    TextView rating;
+    Movie movie = null;
+    Button favoriteButton;
     int id;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_detail);
-        Movie movie = (Movie) getIntent().getSerializableExtra("movie");
+        Intent intent = getIntent();
+        viewModel = new ViewModelProvider(this).get(FavoriteViewModel.class);
+        favoriteButton = findViewById(R.id.favorites_button);
+        FavoriteMovie favoriteMovie = null;
 
-        id = movie.getmId();
 
-        final Button favoriteButton = findViewById(R.id.favorites_button);
-        Cursor cursor = getContentResolver().query(MovieProvider.CONTENT_URI, null, DatabaseHelper.COLUMN_ID + "=" + id, null, null);
-        if (cursor.getCount() <= 0) {
-            cursor.close();
-            isFavorite = false;
+        movie = (Movie) intent.getSerializableExtra("movie");
+        favoriteMovie = (FavoriteMovie) intent.getSerializableExtra("favoriteMovie");
+
+
+        if (null != movie) {
+            id = movie.getmId();
         } else {
-            cursor.close();
-            isFavorite = true;
+            id = favoriteMovie.mId;
         }
-        if (isFavorite) {
+
+        FavoriteMovie tempFavoriteMovie = viewModel.getMovie(id);
+        new FetchData().execute();
+        if (favoriteMovie != null) {
+
+            isFavorite = true;
             favoriteButton.setText(R.string.remove_favorite);
         } else {
+            favoriteMovie = tempFavoriteMovie;
             favoriteButton.setText(R.string.add_favorite);
+            isFavorite = false;
         }
-
-        new FetchData().execute();
+        imageView = findViewById(R.id.image_iv);
+        title = findViewById(R.id.title_tv);
+        description = findViewById(R.id.description_tv);
+        releaseDate = findViewById(R.id.release_date_tv);
+        rating = findViewById(R.id.user_rating_tv);
 
         recyclerView = findViewById(R.id.videos_recycler_view);
         reviewRecyclerView = findViewById(R.id.reviews_recycler_view);
@@ -72,47 +91,55 @@ public class DetailActivity extends AppCompatActivity {
         recyclerView.setAdapter(videoAdapter);
         reviewRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        ImageView imageView = findViewById(R.id.image_iv);
-        TextView title = findViewById(R.id.title_tv);
-        final TextView description = findViewById(R.id.description_tv);
-        TextView releaseDate = findViewById(R.id.release_date_tv);
-        TextView rating = findViewById(R.id.user_rating_tv);
 
+        if (movie != null) {
+            String imageUrl = "http://image.tmdb.org/t/p/w300//" + movie.getmPoster();
+            Picasso.get().load(imageUrl).into(imageView);
 
-        String imageUrl = "http://image.tmdb.org/t/p/w300//" + movie.getmPoster();
-        Picasso.get().load(imageUrl).into(imageView);
+            final String name = movie.getmTitle();
+            final String descriptionString = movie.getmOverview();
+            final String releaseDateString = movie.getmReleaseDate();
+            final String ratingString = movie.getmVoteAverage();
+            title.setText(name);
+            description.setText(descriptionString);
+            releaseDate.setText(releaseDateString);
+            rating.setText(ratingString);
+        } else if (favoriteMovie != null) {
+            final String name = favoriteMovie.mTitle;
+            final String descriptionString = favoriteMovie.mOverview;
+            final String releaseDateString = favoriteMovie.mReleaseDate;
+            final String ratingString = favoriteMovie.mVoteAverage;
+            title.setText(name);
+            description.setText(descriptionString);
+            releaseDate.setText(releaseDateString);
+            rating.setText(ratingString);
+        }
 
-        final String name = movie.getmTitle();
-        final String descriptionString = movie.getmOverview();
-        final String releaseDateString = movie.getmReleaseDate();
-        final String ratingString = movie.getmVoteAverage();
-        title.setText(name);
-        description.setText(descriptionString);
-        releaseDate.setText(releaseDateString);
-        rating.setText(ratingString);
-
-
+        Movie finalMovie = movie;
         favoriteButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if (isFavorite) {
-                    int deleted = getContentResolver().delete(MovieProvider.CONTENT_URI, DatabaseHelper.COLUMN_ID + "=" + id, null);
+                    viewModel.delete(id);
                     favoriteButton.setText(R.string.add_favorite);
-                    finish();
+                    isFavorite = false;
                 } else {
-                    ContentValues contentValues = new ContentValues();
-                    contentValues.put(DatabaseHelper.COLUMN_ID, id);
-                    contentValues.put(DatabaseHelper.COLUMN_NAME, name);
-                    contentValues.put(DatabaseHelper.COLUMN_DESCRIPTION, descriptionString);
-                    contentValues.put(DatabaseHelper.COLUMN_RATING, ratingString);
-                    contentValues.put(DatabaseHelper.COLUMN_RELEASE_DATE, releaseDateString);
-                    getContentResolver().insert(MovieProvider.CONTENT_URI, contentValues);
+                    final String name = finalMovie.getmTitle();
+                    final String descriptionString = finalMovie.getmOverview();
+                    final String releaseDateString = finalMovie.getmReleaseDate();
+                    final String ratingString = finalMovie.getmVoteAverage();
+                    FavoriteMovie tempFavoriteMovie = new FavoriteMovie(name, descriptionString, ratingString, releaseDateString, id);
+
                     favoriteButton.setText(R.string.remove_favorite);
+                    viewModel.insert(tempFavoriteMovie);
                     isFavorite = true;
                 }
             }
         });
+
+
     }
+
 
     public static class MyViewHolder extends RecyclerView.ViewHolder {
 
@@ -228,7 +255,7 @@ public class DetailActivity extends AppCompatActivity {
         @Override
         protected Void doInBackground(Void... voids) {
 
-            String apiKey = "e8b360e6cb85c4a1add9aac77aaf7ef8";
+            String apiKey = "key";
             String trailersUrl = "https://api.themoviedb.org/3/movie/" + id + "/videos?api_key=" + apiKey;
             String reviewsUrl = "https://api.themoviedb.org/3/movie/" + id + "/reviews?api_key=" + apiKey;
 

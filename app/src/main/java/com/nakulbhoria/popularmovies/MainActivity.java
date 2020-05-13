@@ -1,6 +1,5 @@
 package com.nakulbhoria.popularmovies;
 
-import android.database.Cursor;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.view.View;
@@ -9,33 +8,53 @@ import android.widget.ArrayAdapter;
 import android.widget.Spinner;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.nakulbhoria.popularmovies.Adapters.FavoriteAdapter;
+import com.nakulbhoria.popularmovies.Adapters.MainRecyclerAdapter;
+import com.nakulbhoria.popularmovies.Model.FavoriteMovie;
+import com.nakulbhoria.popularmovies.Model.FavoriteViewModel;
 import com.nakulbhoria.popularmovies.Model.Movie;
-import com.nakulbhoria.popularmovies.data.DatabaseHelper;
-import com.nakulbhoria.popularmovies.data.MovieProvider;
 import com.nakulbhoria.popularmovies.data.NetworkUtils;
 
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
     ArrayList<Movie> movies = new ArrayList<>();
+    ArrayList<FavoriteMovie> mFavoriteMovies = new ArrayList<>();
     RecyclerView recyclerView;
     MainRecyclerAdapter adapter;
     int sortIndex = 0;
+    FavoriteAdapter favoriteAdapter;
+    Spinner spinner;
+    private FavoriteViewModel viewModel;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        viewModel = new ViewModelProvider(this).get(FavoriteViewModel.class);
         ArrayList<String> list = new ArrayList<>();
         list.add("Most Popular");
         list.add("Top Rated");
         list.add("Favorites");
-        Spinner spinner = findViewById(R.id.spinner);
+        spinner = findViewById(R.id.spinner);
+
+        viewModel.getAllMovies().observe(this, new Observer<List<FavoriteMovie>>() {
+            @Override
+            public void onChanged(List<FavoriteMovie> favoriteMovies) {
+                mFavoriteMovies.clear();
+                mFavoriteMovies.addAll(favoriteMovies);
+            }
+        });
 
         ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, list);
         spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -51,23 +70,17 @@ public class MainActivity extends AppCompatActivity {
                     new FetchMoviesData().execute();
                 } else if (position == 2) {
                     sortIndex = 2;
-                    movies.clear();
-                    Cursor cursor = getContentResolver().query(MovieProvider.CONTENT_URI, null, null, null, null);
-                    if (cursor.getCount() > 0) {
-                        cursor.moveToFirst();
-                        while (!cursor.isAfterLast()) {
-                            int tempId = cursor.getInt(cursor.getColumnIndex(DatabaseHelper.COLUMN_ID));
-                            String name = cursor.getString(cursor.getColumnIndex(DatabaseHelper.COLUMN_NAME));
-                            String description = cursor.getString(cursor.getColumnIndex(DatabaseHelper.COLUMN_DESCRIPTION));
-                            String rating = cursor.getString(cursor.getColumnIndex(DatabaseHelper.COLUMN_RATING));
-                            String releaseDate = cursor.getString(cursor.getColumnIndex(DatabaseHelper.COLUMN_RELEASE_DATE));
-                            movies.add(new Movie(name, description, rating, "", releaseDate, tempId));
-                            cursor.moveToNext();
+
+                    viewModel.getAllMovies().observe(MainActivity.this, new Observer<List<FavoriteMovie>>() {
+                        @Override
+                        public void onChanged(List<FavoriteMovie> favoriteMovies) {
+                            mFavoriteMovies.clear();
+                            mFavoriteMovies.addAll(favoriteMovies);
+                            favoriteAdapter = new FavoriteAdapter(mFavoriteMovies, MainActivity.this);
+                            recyclerView.setLayoutManager(new LinearLayoutManager(MainActivity.this));
+                            recyclerView.setAdapter(favoriteAdapter);
                         }
-                        cursor.close();
-                    }
-                    adapter = new MainRecyclerAdapter(movies, MainActivity.this);
-                    recyclerView.setAdapter(adapter);
+                    });
                 }
             }
 
@@ -91,6 +104,24 @@ public class MainActivity extends AppCompatActivity {
         super.onStart();
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (spinner != null) {
+            int position = spinner.getSelectedItemPosition();
+            if (position == 2) {
+                favoriteAdapter = new FavoriteAdapter(mFavoriteMovies, MainActivity.this);
+                recyclerView.setLayoutManager(new LinearLayoutManager(MainActivity.this));
+                recyclerView.setAdapter(favoriteAdapter);
+            } else {
+                adapter = new MainRecyclerAdapter(movies, MainActivity.this);
+                GridLayoutManager gridLayoutManager = new GridLayoutManager(getApplicationContext(), 2);
+                recyclerView.setLayoutManager(gridLayoutManager);
+                recyclerView.setAdapter(adapter);
+            }
+        }
+    }
+
     class FetchMoviesData extends AsyncTask<Void, Void, Void>{
 
         @Override
@@ -101,7 +132,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected Void doInBackground(Void... voids) {
 
-            String apiKey = "e8b360e6cb85c4a1add9aac77aaf7ef8";
+            String apiKey = "key";
             String popularURL = "https://api.themoviedb.org/3/movie/popular?&api_key=" + apiKey;
             String topRated = "https://api.themoviedb.org/3/movie/top_rated?&api_key=" + apiKey;
 
@@ -121,6 +152,8 @@ public class MainActivity extends AppCompatActivity {
         protected void onPostExecute(Void aVoid) {
             super.onPostExecute(aVoid);
             adapter = new MainRecyclerAdapter(movies, MainActivity.this);
+            GridLayoutManager gridLayoutManager = new GridLayoutManager(getApplicationContext(), 2);
+            recyclerView.setLayoutManager(gridLayoutManager);
             recyclerView.setAdapter(adapter);
             adapter.notifyDataSetChanged();
         }
