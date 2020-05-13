@@ -93,7 +93,7 @@ public class DetailActivity extends AppCompatActivity {
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
         if (movie != null) {
-            String imageUrl = "http://image.tmdb.org/t/p/w300//" + movie.getmPoster();
+            String imageUrl = "https://image.tmdb.org/t/p/w300//" + movie.getmPoster();
             Picasso.get().load(imageUrl).into(imageView);
 
             final String name = movie.getmTitle();

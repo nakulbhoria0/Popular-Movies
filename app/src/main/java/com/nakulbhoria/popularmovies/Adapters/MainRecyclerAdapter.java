@@ -44,14 +44,9 @@ public class MainRecyclerAdapter extends RecyclerView.Adapter<MainRecyclerAdapte
         String poster = movie.getmPoster();
 
 
-        if (poster.isEmpty()) {
-            holder.imageView.setVisibility(View.GONE);
-            holder.textView.setVisibility(View.VISIBLE);
-            holder.textView.setText(movie.getmTitle());
-        } else {
-            String imageUrl = "http://image.tmdb.org/t/p/w500//" + poster;
+            String imageUrl = "https://image.tmdb.org/t/p/w500//" + poster;
             Picasso.get().load(imageUrl).into(holder.imageView);
-        }
+
 
 
         holder.itemView.setOnClickListener(new View.OnClickListener() {
@@ -70,12 +65,10 @@ public class MainRecyclerAdapter extends RecyclerView.Adapter<MainRecyclerAdapte
     }
 
     public class MyMainHolder extends RecyclerView.ViewHolder {
-        TextView textView;
         ImageView imageView;
 
         public MyMainHolder(@NonNull View itemView) {
             super(itemView);
-            textView = itemView.findViewById(R.id.textView);
             imageView = itemView.findViewById(R.id.imageView);
         }
 
