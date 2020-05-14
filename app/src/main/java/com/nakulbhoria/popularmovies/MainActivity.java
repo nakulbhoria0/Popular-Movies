@@ -2,13 +2,16 @@ package com.nakulbhoria.popularmovies;
 
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Parcelable;
+import android.os.PersistableBundle;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Spinner;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -24,10 +27,10 @@ import com.nakulbhoria.popularmovies.data.NetworkUtils;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
-import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
+    private static final String BUNDLE_RECYCLER_LAYOUT = "recycler_layout";
     ArrayList<Movie> movies = new ArrayList<>();
     ArrayList<FavoriteMovie> mFavoriteMovies = new ArrayList<>();
     RecyclerView recyclerView;
@@ -36,29 +39,47 @@ public class MainActivity extends AppCompatActivity {
     FavoriteAdapter favoriteAdapter;
     Spinner spinner;
     private FavoriteViewModel viewModel;
+    Bundle state = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        viewModel = new ViewModelProvider(this).get(FavoriteViewModel.class);
+        recyclerView = findViewById(R.id.main_recycler_view);
         ArrayList<String> list = new ArrayList<>();
         list.add("Most Popular");
         list.add("Top Rated");
         list.add("Favorites");
         spinner = findViewById(R.id.spinner);
-
-        viewModel.getAllMovies().observe(this, new Observer<List<FavoriteMovie>>() {
-            @Override
-            public void onChanged(List<FavoriteMovie> favoriteMovies) {
-                mFavoriteMovies.clear();
-                mFavoriteMovies.addAll(favoriteMovies);
-            }
-        });
-
+        viewModel = new ViewModelProvider(this).get(FavoriteViewModel.class);
         ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, list);
         spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinner.setAdapter(spinnerAdapter);
+        if (savedInstanceState != null) {
+            state = savedInstanceState;
+            if (spinner.getSelectedItemPosition() == 2) {
+                favoriteAdapter = new FavoriteAdapter(mFavoriteMovies, MainActivity.this);
+                recyclerView.setLayoutManager(new LinearLayoutManager(MainActivity.this));
+                recyclerView.setAdapter(favoriteAdapter);
+            } else {
+                adapter = new MainRecyclerAdapter(movies, MainActivity.this);
+                GridLayoutManager gridLayoutManager = new GridLayoutManager(getApplicationContext(), 2);
+                recyclerView.setLayoutManager(gridLayoutManager);
+                recyclerView.setAdapter(adapter);
+            }
+
+            Parcelable savedRecyclerLayoutState = state.getParcelable(BUNDLE_RECYCLER_LAYOUT);
+            recyclerView.getLayoutManager().onRestoreInstanceState(savedRecyclerLayoutState);
+            adapter.notifyDataSetChanged();
+        }
+
+
+        viewModel.getAllMovies().observe(this, favoriteMovies -> {
+            mFavoriteMovies.clear();
+            mFavoriteMovies.addAll(favoriteMovies);
+        });
+
+
         spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
@@ -71,15 +92,12 @@ public class MainActivity extends AppCompatActivity {
                 } else if (position == 2) {
                     sortIndex = 2;
 
-                    viewModel.getAllMovies().observe(MainActivity.this, new Observer<List<FavoriteMovie>>() {
-                        @Override
-                        public void onChanged(List<FavoriteMovie> favoriteMovies) {
-                            mFavoriteMovies.clear();
-                            mFavoriteMovies.addAll(favoriteMovies);
-                            favoriteAdapter = new FavoriteAdapter(mFavoriteMovies, MainActivity.this);
-                            recyclerView.setLayoutManager(new LinearLayoutManager(MainActivity.this));
-                            recyclerView.setAdapter(favoriteAdapter);
-                        }
+                    viewModel.getAllMovies().observe(MainActivity.this, favoriteMovies -> {
+                        mFavoriteMovies.clear();
+                        mFavoriteMovies.addAll(favoriteMovies);
+                        favoriteAdapter = new FavoriteAdapter(mFavoriteMovies, MainActivity.this);
+                        recyclerView.setLayoutManager(new LinearLayoutManager(MainActivity.this));
+                        recyclerView.setAdapter(favoriteAdapter);
                     });
                 }
             }
@@ -122,6 +140,22 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    @Override
+    public void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putParcelable(BUNDLE_RECYCLER_LAYOUT, recyclerView.getLayoutManager().onSaveInstanceState());
+    }
+
+    @Override
+    public void onRestoreInstanceState(@Nullable Bundle savedInstanceState, @Nullable PersistableBundle persistentState) {
+        super.onRestoreInstanceState(savedInstanceState, persistentState);
+
+        if (savedInstanceState != null) {
+            Parcelable savedRecyclerLayoutState = savedInstanceState.getParcelable(BUNDLE_RECYCLER_LAYOUT);
+            recyclerView.getLayoutManager().onRestoreInstanceState(savedRecyclerLayoutState);
+        }
+    }
+
     class FetchMoviesData extends AsyncTask<Void, Void, Void>{
 
         @Override
@@ -138,10 +172,10 @@ public class MainActivity extends AppCompatActivity {
 
 
             if (sortIndex == 0) {
-                JSONObject object = NetworkUtils.getData(topRated);
+                JSONObject object = NetworkUtils.getData(popularURL);
                 movies = NetworkUtils.getMoviesList(object);
             } else if (sortIndex == 1) {
-                JSONObject object = NetworkUtils.getData(popularURL);
+                JSONObject object = NetworkUtils.getData(topRated);
                 movies = NetworkUtils.getMoviesList(object);
             }
 
@@ -155,6 +189,10 @@ public class MainActivity extends AppCompatActivity {
             GridLayoutManager gridLayoutManager = new GridLayoutManager(getApplicationContext(), 2);
             recyclerView.setLayoutManager(gridLayoutManager);
             recyclerView.setAdapter(adapter);
+            if (state != null) {
+                Parcelable savedRecyclerLayoutState = state.getParcelable(BUNDLE_RECYCLER_LAYOUT);
+                recyclerView.getLayoutManager().onRestoreInstanceState(savedRecyclerLayoutState);
+            }
             adapter.notifyDataSetChanged();
         }
     }
